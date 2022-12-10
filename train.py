@@ -64,25 +64,15 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 print("Device:", device)
 print("Number of workers:", NUM_WORKERS)
 
-#TODO: make two wav2spk files --> one for train, one for val, and load these in seperately 
-
-#unlabeled_data = FlickrDataset(root=DATASET_PATH, split='unlabeled', download=True,
-#                       transform=ContrastiveTransformations(contrast_transforms, use_MFCC=False, n_views=2))
 train_csv_path = "./wav2spk_TRAIN.txt"
 train_data_contrast = FlickrDataset(csv_file=train_csv_path, root_dir=DATASET_PATH,
                                     transform=ContrastiveTransformations(contrast_transforms))
 val_csv_path = "./wav2spk_DEV.txt"
 val_data_contrast = FlickrDataset(csv_file=val_csv_path, root_dir=DATASET_PATH,
                                     transform=ContrastiveTransformations(contrast_transforms))
-#unlabeled_data = FlickrDataset(root=DATASET_PATH, split='unlabeled', download=True,
-#                       transform=ContrastiveTransformations(contrast_transforms, use_MFCC=False, n_views=2))
 
 practice_spectrogram, practice_speaker_id = train_data_contrast[0]
-#print(type(practice_spectrogram))
 
-#SKIP
-# Visualize some examples
-#When working with MFCC's, print out the MFCC tensors ig
 pl.seed_everything(42)
 NUM_IMAGES = 4
 imgs = torch.stack([img for idx in range(NUM_IMAGES) for img in train_data_contrast[idx][0]], dim=0)
@@ -107,10 +97,6 @@ def train_simclr(batch_size, max_epochs=500, **kwargs):
 
     # Check whether pretrained model exists. If yes, load it and skip training
     pretrained_filename = os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt')
-    # if os.path.isfile(pretrained_filename):
-    #     print(f'Found pretrained model at {pretrained_filename}, loading...')
-    #     model = SimCLR.load_from_checkpoint(pretrained_filename) # Automatically loads the model with the saved hyperparameters
-    # else:
     train_loader = data.DataLoader(train_data_contrast, batch_size=batch_size, shuffle=True,
                                        drop_last=True, pin_memory=True, num_workers=NUM_WORKERS)
     val_loader = data.DataLoader(val_data_contrast, batch_size=batch_size, shuffle=False,
