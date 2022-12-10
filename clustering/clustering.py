@@ -10,6 +10,7 @@ MODEL_NAME = "softmax_sparse_categorical_crossentropy"
 TEST_PATH_LABELS = "wav2spk_test.txt"
 TEST_PATH_DIR_OUT = "test_features/"
 
+#NOTE: For simclr version, load the simclr model instead (example in notebooks)
 
 def load_test_data():
     df = pd.read_csv(
