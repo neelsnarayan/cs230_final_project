@@ -1,3 +1,10 @@
+"""
+simclr_inspired.py implements a SimCLR-inspired algorithm, which is a framework of contrastive
+learning for visual representations. To harness the visual power of SimCLR, we rely on the
+waveform visualizations of each audio file and then apply contrastive learning. Here, we
+train a model and then generate metrics to gauge effectiveness.
+"""
+
 ## Standard libraries
 import os
 from copy import deepcopy
