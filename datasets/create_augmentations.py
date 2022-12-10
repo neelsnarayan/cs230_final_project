@@ -64,9 +64,21 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 print("Device:", device)
 print("Number of workers:", NUM_WORKERS)
 
-#I am not resampling bc it is all sampled at same rate
-#Apply a frequency and time masking transformation to generate augmentations of the same sample, then generate MFCCs
+"""
+contrastive_transformations.py applies transformations on the audio samples
+for differentiation to be used with contrastive learning.
+"""
+
+import random
+import torchaudio
+
+
 class ContrastiveTransformations(object):
+    """
+    Applies transformations on audio samples and creates MFCC representations
+    - Time Stretch: Randomly slow down or speed up parts of audio sample
+    """
+
     def __init__(self, base_transforms, use_MFCC=False, n_views=2):
         self.base_transforms = base_transforms
         self.use_MFCC = use_MFCC
@@ -76,34 +88,28 @@ class ContrastiveTransformations(object):
         num_channels, num_frames = x.shape
         create_spectrogram = torchaudio.transforms.Spectrogram(n_fft=800)
         spectrogram = create_spectrogram(x)
-        #mask_spectrogram = torchaudio.transforms.TimeMasking(80)
-        stretch_spectrogram = torchaudio.transforms.TimeStretch(n_freq = spectrogram.shape[1])
-        #spectrogram = stretch_spectrogram(spectrogram, random.uniform(0.5, 1.5))
-        spectrogram = spectrogram*3
-        #print(type(spectrogram))
-        #spectrogram = ToPILImage(spectrogram)
-        # print(spectrogram.shape)
-        # augmented_spectrograms = []
-        # for i in range(self.n_views):
-        #   augmented_spectrogram = stretch_spectrogram(spectrogram, random.uniform(0.5, 1.5))
-        #   print(augmented_spectrogram.shape)
-        #   augmented_spectrograms.append(augmented_spectrogram)
-        augmented_spectrograms = [stretch_spectrogram(spectrogram, random.uniform(0.5, 1.5)) for i in range(self.n_views)]
-        #smallest_n_frames = min([spectrogram.shape[3] for spectrogram in augmented_spectrograms])
-        #augmented_spectrograms = [self.base_transforms(augmented_spectrogram) for augmented_spectrogram in augmented_spectrograms]
-        augmented_spectrograms = [self.base_transforms(spectrogram) for i in range(self.n_views)]
-        #print(type(augmented_spectrograms[0]))
+        # time stretch transformation
+        stretch_spectrogram = torchaudio.transforms.TimeStretch(
+            n_freq=spectrogram.shape[1]
+        )
+
+        spectrogram = spectrogram * 3
+        augmented_spectrograms = [
+            stretch_spectrogram(spectrogram, random.uniform(0.5, 1.5))
+            for i in range(self.n_views)
+        ]
+        augmented_spectrograms = [
+            self.base_transforms(spectrogram) for i in range(self.n_views)
+        ]
+
+        # generate MFCC representations for audio samples
         if self.use_MFCC:
-          create_MFCC = torchaudio.transforms.MFCC(sample_rate=self.sample_rate, n_mfcc=40)
-          return [create_MFCC(i) for i in augmented_spectrograms]
+            create_MFCC = torchaudio.transforms.MFCC(
+                sample_rate=self.sample_rate, n_mfcc=40
+            )
+            return [create_MFCC(i) for i in augmented_spectrograms]
         else:
-          return augmented_spectrograms
-#TODO: maybe add noise as a transform too and get rid of some of these image transforms
-# contrast_transforms = torch.nn.Sequential(
-#             TimeStretch(stretch_factor, fixed_rate=True),
-#             FrequencyMasking(freq_mask_param=10),
-#             TimeMasking(time_mask_param=10),
-#             )
+            return augmented_spectrograms
 
 contrast_transforms = torchvision.transforms.Compose([transforms.ToPILImage(),
                                           transforms.RandomResizedCrop(size=128),
@@ -119,33 +125,12 @@ contrast_transforms = torchvision.transforms.Compose([transforms.ToPILImage(),
                                           transforms.Normalize((0.5,), (0.5,))
                                          ])
 
-# contrast_transforms = torchvision.transforms.Compose([transforms.ToPILImage(),
-#                                           transforms.RandomHorizontalFlip(),
-#                                           transforms.RandomResizedCrop(size=96),
-#                                           transforms.RandomApply([
-#                                               transforms.ColorJitter(brightness=0.5,
-#                                                                      contrast=0.5,
-#                                                                      saturation=0.5,
-#                                                                      hue=0.1)
-#                                           ], p=0.8),
-#                                           transforms.RandomGrayscale(p=0.2),
-#                                           transforms.GaussianBlur(kernel_size=9),
-#                                           transforms.ToTensor(),
-#                                           transforms.Normalize((0.5,), (0.5,))
-#                                          ])
-
-#TODO: make two wav2spk files --> one for train, one for val, and load these in seperately 
-
-#unlabeled_data = FlickrDataset(root=DATASET_PATH, split='unlabeled', download=True,
-#                       transform=ContrastiveTransformations(contrast_transforms, use_MFCC=False, n_views=2))
 train_csv_path = "./wav2spk_TRAIN.txt"
 train_data_contrast = FlickrDataset(csv_file=train_csv_path, root_dir=DATASET_PATH,
                                     transform=ContrastiveTransformations(contrast_transforms))
 val_csv_path = "./wav2spk_DEV.txt"
 val_data_contrast = FlickrDataset(csv_file=val_csv_path, root_dir=DATASET_PATH,
                                     transform=ContrastiveTransformations(contrast_transforms))
-#unlabeled_data = FlickrDataset(root=DATASET_PATH, split='unlabeled', download=True,
-#                       transform=ContrastiveTransformations(contrast_transforms, use_MFCC=False, n_views=2))
 
 
          
